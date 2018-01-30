@@ -1,29 +1,72 @@
-language: c
-os:
-  - linux
-  - osx
+language: cpp
+#
+# language: c
+# os:
+#  - linux
+#  - osx
+#
 sudo: required
 dist: trusty
-osx_image: xcode8.2
+#
+# osx_image: xcode8.2
+#
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./.travis/install-debian.sh; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./.travis/install-macos.sh; fi
+  - sudo apt-get -y install git build-essential cmake zlib1g-dev libpng-dev libcairo2-dev libfreetype6-dev
+  - sudo apt-get -y install libjson-c-dev libfontconfig1-dev libgtkmm-3.0-dev libpangomm-1.4-dev libgl1-mesa-dev libglu-dev libspnav-dev
+  - # sudo add-apt-repository -y ppa:ondrej/autotools
+  - # sudo apt-get -y update
+  - # sudo apt-get -y install automake-1.15
+#
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./.travis/install-debian.sh; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./.travis/install-macos.sh; fi
+#
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./.travis/build-debian.sh; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./.travis/build-macos.sh; fi
-deploy:
-  - provider: releases
-    api_key:
-      secure: dDlkIawHcODlW9B/20/cQCtzeoocvs0hKuNngRKXKqzXLWTRq33oq/B7+39tAixWbmv6exTpijiKrRNFiSCW5Z4iwHLwaRD4XJznxw63e/Hus/dxg2Tvqx7XFpkCz8mT1Z+gZQE5YxAngeZPpI/sZbZtF1UO3yH5eLeeokZ15p26ZskQUPoYuzrTgTzYL3XfpG3F+20rNBawH1ycsCTVD/08/n31d2m3CrKAsbW7er92ek6w4fzKr7NW8WeXjrPJETVpw5fQg1Od3pRGW8dPQaJcvKQEogMp8Mm0ETYd0qigg89/giBz7QwOgmAWQ4dH+DfZH4Ojl//127QztBolMvyDMQBykWrtJoGcij05sT6K2IJr2FHeUBO12MAEdjiVvhQj3DtTzjPiZAHHDBSLWxLKWWhlhHE4pq7g1MQhqXkaAHI2BLNzwLmaowbMT0bECf9yfz6xx18h6XPQFX44oOktraobVALFlyHqeKa8zdcUt22LF6uAL1m5dxL0tny3eXCIPE4UH/RZgua/cHV9G3cUvKQa/QnFSLRhvWVSbGB+7YsHouBJcsUOOW1gmd5442XuC7mpppccRldh+GSxUk6TBJRAx7TeQ0ybDUaoco9MUqp2twv3KreR2+8Q12PDaAhfQVNEGdF3wTm1sShImjCN4VN3eSLlBEbve1QRQXM=
-    skip_cleanup: true
-    file: build/solvespace.dmg
-    on:
-      repo: solvespace/solvespace
-      tags: true
-      condition: "$TRAVIS_OS_NAME == osx"
+  - git clone https://github.com/symbian9/solvespace-appimage
+  - cd solvespace
+  - git submodule update --init extlib/libdxfrw
+  - mkdir build
+  - cd build
+  - cmake .. -DCMAKE_BUILD_TYPE=Release
+  - make
+  - make install DESTDIR=$(readlink -f appdir) ; find appdir/
+  - wget -c "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
+  - chmod a+x linuxdeployqt*.AppImage
+  - unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
+  - ./linuxdeployqt*.AppImage ./appdir/usr/share/applications/*.desktop -bundle-non-qt-libs
+  - ./linuxdeployqt*.AppImage ./appdir/usr/share/applications/*.desktop -appimage
+#
+#  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./.travis/build-debian.sh; fi
+#  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./.travis/build-macos.sh; fi
+# deploy:
+#  - provider: releases
+#    api_key:
+#      secure: dDlkIawHcODlW9B/20/cQCtzeoocvs0hKuNngRKXKqzXLWTRq33oq/B7+39tAixWbmv6exTpijiKrRNFiSCW5Z4iwHLwaRD4XJznxw63e/Hus/dxg2Tvqx7XFpkCz8mT1Z+gZQE5YxAngeZPpI/sZbZtF1UO3yH5eLeeokZ15p26ZskQUPoYuzrTgTzYL3XfpG3F+20rNBawH1ycsCTVD/08/n31d2m3CrKAsbW7er92ek6w4fzKr7NW8WeXjrPJETVpw5fQg1Od3pRGW8dPQaJcvKQEogMp8Mm0ETYd0qigg89/giBz7QwOgmAWQ4dH+DfZH4Ojl//127QztBolMvyDMQBykWrtJoGcij05sT6K2IJr2FHeUBO12MAEdjiVvhQj3DtTzjPiZAHHDBSLWxLKWWhlhHE4pq7g1MQhqXkaAHI2BLNzwLmaowbMT0bECf9yfz6xx18h6XPQFX44oOktraobVALFlyHqeKa8zdcUt22LF6uAL1m5dxL0tny3eXCIPE4UH/RZgua/cHV9G3cUvKQa/QnFSLRhvWVSbGB+7YsHouBJcsUOOW1gmd5442XuC7mpppccRldh+GSxUk6TBJRAx7TeQ0ybDUaoco9MUqp2twv3KreR2+8Q12PDaAhfQVNEGdF3wTm1sShImjCN4VN3eSLlBEbve1QRQXM=
+#    skip_cleanup: true
+#    file: build/solvespace.dmg
+#    on:
+#      repo: solvespace/solvespace
+#      tags: true
+#      condition: "$TRAVIS_OS_NAME == osx"
+#
+after_success:
+  - find ./appdir -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq
+  - curl --upload-file ./SolveSpace*.AppImage https://transfer.sh/SolveSpace-git.$(git rev-parse --short HEAD)-x86_64.AppImage
+  - ls -lh out/* # Assuming you have some files in out/ that you would like to upload
+  - chmod a+x .travis/upload.sh
+  - bash ./.travis/upload.sh ./SolveSpace*.AppImage
+
+branches:
+  except:
+    - # Do not build tags that we create when we upload to GitHub Releases
+    - /^(?i:continuous)$/
+
 notifications:
+  email: false
   irc:
     channels:
       - "chat.freenode.net#solvespace"
     use_notice: true
     skip_join: true
+    template:
+      - "%{repository_slug} (%{commit}) : %{message} %{foo} "
+      - "Build details: %{build_url}"
